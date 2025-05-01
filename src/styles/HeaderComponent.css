@@ -302,6 +302,24 @@
   color: var(--primary-blue);
 }
 
+/* Bouton d'ajout rapide */
+.quick-add-button {
+  background: #1890ff;
+  color: white;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+}
+
+.quick-add-button:hover {
+  background: #40a9ff;
+  color: white;
+}
+
 /* Mobile Search Bar */
 .mobile-search-bar {
   display: none;

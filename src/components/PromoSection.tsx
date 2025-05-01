@@ -1,16 +1,45 @@
-import React from 'react';
-import { Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Button, Spin } from 'antd';
 import { ArrowRightOutlined, ShoppingCartOutlined, FieldTimeOutlined } from '@ant-design/icons';
-import { promoProducts } from '../data/products';
 import { useCart } from '../context/CartContext';
+import client from '../api/client';
 import '../styles/PromoSection.css';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  oldPrice?: number;
+  image: string;
+  isPromo?: boolean;
+}
 
 const PromoSection = () => {
   const { addToCart } = useCart();
+  const [promoProducts, setPromoProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   
+  useEffect(() => {
+    const fetchPromoProducts = async () => {
+      try {
+        const response = await client.get('/products?isPromo=true');
+        setPromoProducts(response.data);
+      } catch (error) {
+        console.error('Error fetching promo products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchPromoProducts();
+  }, []);
+
+  if (loading) {
+    return <Spin size="large" className="loading-spinner" />;
+  }
+
   return (
     <section className="promo-section">
-      {/* Formes décoratives */}
       <div className="decorative-shapes">
         <div className="decorative-shape shape-1"></div>
         <div className="decorative-shape shape-2"></div>
@@ -19,7 +48,6 @@ const PromoSection = () => {
       
       <div className="promo-container">
         <div className="promo-grid">
-          {/* Partie texte */}
           <div className="promo-content">
             <span className="promo-badge">
               Offres à durée limitée
@@ -53,15 +81,9 @@ const PromoSection = () => {
               </div>
             </div>
             
-            <Button 
-              size="large" 
-              className="view-all-offers-button"
-            >
-              Voir toutes les offres <ArrowRightOutlined className="button-arrow" />
-            </Button>
+            
           </div>
           
-          {/* Partie produits */}
           <div className="promo-products">
             <div className="promo-products-grid">
               {promoProducts.slice(0, 4).map((product, index) => {
@@ -74,7 +96,6 @@ const PromoSection = () => {
                     key={product.id} 
                     className={`promo-product-card ${index % 2 !== 0 ? 'shifted' : ''}`}
                   >
-                    {/* Badge de réduction */}
                     {product.oldPrice && (
                       <div className="discount-badge">
                         -{discountPercentage}%
@@ -86,9 +107,11 @@ const PromoSection = () => {
                         src={product.image} 
                         alt={product.name} 
                         className="promo-product-image"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
+                        }}
                       />
                       
-                      {/* Indicateur de temps limité */}
                       <div className="limited-time-indicator">
                         <FieldTimeOutlined className="time-icon" /> Offre limitée
                       </div>
@@ -108,6 +131,7 @@ const PromoSection = () => {
                         <button 
                           onClick={() => addToCart(product)}
                           className="promo-cart-button"
+                          aria-label="Ajouter au panier"
                         >
                           <ShoppingCartOutlined />
                         </button>

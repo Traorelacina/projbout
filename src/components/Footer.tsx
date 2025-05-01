@@ -129,12 +129,7 @@ const FooterComponent = () => {
             <p className="copyright-text">
               © 2025 TechBoutique. Tous droits réservés.
             </p>
-            <div className="payment-methods">
-              <img src="/api/placeholder/50/30" alt="Visa" className="payment-icon" />
-              <img src="/api/placeholder/50/30" alt="Mastercard" className="payment-icon" />
-              <img src="/api/placeholder/50/30" alt="PayPal" className="payment-icon" />
-              <img src="/api/placeholder/50/30" alt="Apple Pay" className="payment-icon" />
-            </div>
+            
           </div>
         </div>
       </div>

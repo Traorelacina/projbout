@@ -14,6 +14,7 @@ connectDB();
 
 // Routes
 const authRoutes = require('./src/routes/authRoutes');
+const productRoutes = require('./src/routes/productRoutes'); // Nouvelle importation
 
 const app = express();
 
@@ -45,15 +46,14 @@ app.use(cors({
   credentials: true
 }));
 
-
 // Monter les routes
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes); // Nouvelle route pour les produits
 
 // Middleware de gestion d'erreurs
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5001;
-
 
 const server = app.listen(
   PORT,

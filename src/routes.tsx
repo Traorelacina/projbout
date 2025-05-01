@@ -8,6 +8,12 @@ import ProfilePage from './components/ProfilePage';
 import PromoPage from './components/PromoSection';
 import NewPage from './components/NewPage';
 import About from './components/AboutPage';
+import AddProduct from './components/AddProductPage';
+import ProductDetailPage from './components/ProductDetailPage';
+import OrderPage from './components/Order';
+import CheckoutPage from './components/CheckoutPage'
+import OrderConfirmation from './components/OrderConfirmation'
+import OrderHistory from './components/OrderHistory';
 
 export const router = createBrowserRouter([
   {
@@ -20,7 +26,20 @@ export const router = createBrowserRouter([
       },
       {
         path: 'products',
-        element: <ProductsPage />
+        children: [
+          {
+            index: true,
+            element: <ProductsPage />
+          },
+          {
+            path: ':id', // Route pour les détails d'un produit spécifique
+            element: <ProductDetailPage />
+          }
+        ]
+      },
+      {
+        path: 'add-product',
+        element: <AddProduct />
       },
       {
         path: 'login',
@@ -30,25 +49,40 @@ export const router = createBrowserRouter([
         path: 'register',
         element: <RegisterPage />
       },
-
       {
         path: 'profile',
-        element:<ProfilePage />
+        element: <ProfilePage />
       },
-
       {
         path: 'sales',
-        element:<PromoPage />
+        element: <PromoPage />
       },
-      
       {
         path: 'new',
-        element:<NewPage />
+        element: <NewPage />
       },
       {
         path: 'about',
-        element:<About />
+        element: <About />
       },
+      {
+        path: 'orders',
+        element: <OrderPage/>
+      },
+      {
+        path: 'checkout',
+        element: <CheckoutPage />
+      },
+      {
+        path: 'order-confirmation',
+        element: <OrderConfirmation />
+      },
+      {
+        path: 'OrderHistory',
+        element: <OrderHistory/>
+
+      }
+
     ]
   }
 ]);
