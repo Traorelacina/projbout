@@ -45,22 +45,16 @@
   gap: 30px;
 }
 
+.logo-image {
+  height: 40px;
+  object-fit: contain;
+}
+
 .logo-container {
   display: flex;
   align-items: center;
 }
 
-.site-logo {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--primary-blue);
-  text-decoration: none;
-  transition: var(--transition);
-}
-
-.site-logo:hover {
-  color: var(--dark-blue);
-}
 
 /* Desktop Navigation */
 .desktop-navigation {

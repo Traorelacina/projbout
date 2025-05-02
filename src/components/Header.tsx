@@ -13,6 +13,8 @@ import {
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Badge } from 'antd';
 import '../styles/HeaderComponent.css';
+import { useAuth } from '../context/AuthContext';
+import logo from '../../public/logob.jpg';
 
 const HeaderComponent = () => {
   // États
@@ -80,9 +82,10 @@ const HeaderComponent = () => {
           </div>
           
           <div className="logo-container">
-            <Link to="/" className="site-logo">TechBoutique</Link>
-          </div>
-          
+        <Link to="/" className="site-logo">
+          <img src={logo} alt="TechBoutique Logo" className="logo-image" />
+        </Link>
+      </div>
           <nav className="desktop-navigation">
             {navItems.map((item) => (
               <NavLink 
