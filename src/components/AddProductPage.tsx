@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Form, Input, InputNumber, Switch, Button, message } from 'antd';
+import { Form, Input, InputNumber, Switch, Button, message, Upload } from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import client from '../api/client'; // Importez le client axios configuré
+import client from '../api/client';
 import '../styles/AddProductPage.css';
 
 interface ProductFormValues {
@@ -10,7 +11,7 @@ interface ProductFormValues {
   price: number;
   oldPrice?: number;
   category: string;
-  image: string;
+  image: File | string;
   rating?: number;
   stock: number;
   isNew?: boolean;
@@ -21,17 +22,58 @@ const AddProductPage = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [fileList, setFileList] = useState<any[]>([]);
+
+  const beforeUpload = (file: File) => {
+    const isImage = file.type.startsWith('image/');
+    if (!isImage) {
+      message.error('Vous ne pouvez uploader que des fichiers images!');
+    }
+    return isImage;
+  };
+
+  const handleUploadChange = (info: any) => {
+    let fileList = [...info.fileList];
+    fileList = fileList.slice(-1); // Limiter à un seul fichier
+    setFileList(fileList);
+    
+    if (info.file.status === 'done') {
+      message.success(`${info.file.name} fichier uploadé avec succès`);
+    } else if (info.file.status === 'error') {
+      message.error(`${info.file.name} échec de l'upload.`);
+    }
+  };
 
   const onFinish = async (values: ProductFormValues) => {
     try {
       setLoading(true);
       
-      // Utilisation du client axios configuré
-      const response = await client.post('/products', values);
+      // Créer un FormData pour envoyer le fichier
+      const formData = new FormData();
+      formData.append('name', values.name);
+      formData.append('description', values.description);
+      formData.append('price', values.price.toString());
+      if (values.oldPrice) formData.append('oldPrice', values.oldPrice.toString());
+      formData.append('category', values.category);
+      if (fileList.length > 0) {
+        formData.append('image', fileList[0].originFileObj);
+      }
+      formData.append('stock', values.stock.toString());
+      if (values.rating) formData.append('rating', values.rating.toString());
+      formData.append('isNew', values.isNew?.toString() || 'false');
+      formData.append('isPromo', values.isPromo?.toString() || 'false');
+
+      // Utilisation du client axios configuré avec le bon header pour FormData
+      const response = await client.post('/products', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       
       if (response.status === 201) {
         message.success('Produit ajouté avec succès');
         form.resetFields();
+        setFileList([]);
         navigate('/products');
       } else {
         throw new Error(response.data.message || 'Erreur lors de l\'ajout du produit');
@@ -108,16 +150,21 @@ const AddProductPage = () => {
           <Input placeholder="Catégorie du produit" />
         </Form.Item>
 
-        <Form.Item 
-          name="image" 
-          label="URL de l'image" 
-          rules={[{ 
-            required: true, 
-            message: 'Veuillez entrer l\'URL de l\'image',
-            type: 'url',
-          }]}
+        <Form.Item
+          name="image"
+          label="Image du produit"
+          rules={[{ required: true, message: 'Veuillez sélectionner une image' }]}
         >
-          <Input placeholder="URL complète de l'image (ex: https://example.com/image.jpg)" />
+          <Upload
+            beforeUpload={beforeUpload}
+            onChange={handleUploadChange}
+            fileList={fileList}
+            accept="image/*"
+            listType="picture"
+            maxCount={1}
+          >
+            <Button icon={<UploadOutlined />}>Sélectionner l'image</Button>
+          </Upload>
         </Form.Item>
 
         <Form.Item 

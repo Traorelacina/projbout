@@ -29,7 +29,7 @@ const FooterComponent = () => {
         <div className="footer-grid">
           {/* Logo & About */}
           <div className="footer-about">
-            <h3 className="footer-logo">TechBoutique</h3>
+            <h3 className="footer-logo">E-MARKETAFRICA</h3>
             <p className="footer-description">
               Votre destination pour les dernières innovations technologiques. 
               Nous proposons une large gamme de produits de qualité supérieure 
@@ -110,15 +110,15 @@ const FooterComponent = () => {
             <ul className="contact-list">
               <li className="contact-item">
                 <EnvironmentOutlined className="contact-icon" />
-                <span className="contact-text">123 Rue du Commerce, 75015 Paris, France</span>
+                <span className="contact-text">123 Rue du Commerce</span>
               </li>
               <li className="contact-item">
                 <PhoneOutlined className="contact-icon" />
-                <span className="contact-text">+33 1 23 45 67 89</span>
+                <span className="contact-text">+225 0778277697</span>
               </li>
               <li className="contact-item">
                 <MailOutlined className="contact-icon" />
-                <span className="contact-text">contact@techboutique.fr</span>
+                <span className="contact-text">contact@E-MARKETAFRICA.fr</span>
               </li>
             </ul>
           </div>
@@ -127,7 +127,7 @@ const FooterComponent = () => {
         <div className="footer-bottom">
           <div className="footer-bottom-container">
             <p className="copyright-text">
-              © 2025 TechBoutique. Tous droits réservés.
+              © 2025 E-MARKETAFRICA. Tous droits réservés.
             </p>
             
           </div>

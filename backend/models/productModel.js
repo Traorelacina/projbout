@@ -52,4 +52,20 @@ const productSchema = new mongoose.Schema({
   }
 });
 
+// Middleware pour supprimer l'image associée lorsqu'un produit est supprimé
+productSchema.pre('remove', async function(next) {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const imagePath = path.join(__dirname, '../../uploads', this.image.split('/uploads/')[1]);
+    
+    fs.unlink(imagePath, (err) => {
+      if (err) console.error('Erreur suppression fichier:', err);
+    });
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = mongoose.model('Product', productSchema);

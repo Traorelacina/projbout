@@ -27,8 +27,8 @@ const Home: React.FC = () => {
     fetchProducts();
   }, []);
 
-  const featuredProducts = products.slice(0, 4);
-  const newArrivals = products.slice(4, 8);
+  const featuredProducts = Array.isArray(products) ? products.slice(0, 4) : [];
+const newArrivals = Array.isArray(products) ? products.slice(4, 8) : [];
 
   const heroImages = [
     '/images/banner1.jpg',
