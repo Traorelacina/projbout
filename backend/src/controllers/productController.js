@@ -1,5 +1,6 @@
+const mongoose = require('mongoose'); // Ajout de l'import mongoose
 const Product = require('../../models/productModel');
-const upload = require('../../src/middlewares/upload');
+const upload = require('../middlewares/upload'); // Chemin corrigé
 const path = require('path');
 const fs = require('fs');
 
@@ -28,6 +29,13 @@ exports.getProducts = async (req, res) => {
 // @access  Public
 exports.getProductById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de produit invalide'
+      });
+    }
+
     const product = await Product.findById(req.params.id);
     
     if (!product) {
@@ -86,7 +94,6 @@ exports.createProduct = [
         data: product
       });
     } catch (error) {
-      // Supprimer le fichier uploadé en cas d'erreur
       if (req.file) {
         fs.unlink(path.join(__dirname, '../../uploads', req.file.filename), (err) => {
           if (err) console.error('Erreur suppression fichier:', err);
@@ -108,6 +115,13 @@ exports.updateProduct = [
   upload.single('image'),
   async (req, res) => {
     try {
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de produit invalide'
+        });
+      }
+
       let product = await Product.findById(req.params.id);
       
       if (!product) {
@@ -117,14 +131,12 @@ exports.updateProduct = [
         });
       }
 
-      // Si nouvelle image est uploadée
       if (req.file) {
-        // Supprimer l'ancienne image
         if (product.image) {
           const oldImagePath = path.join(__dirname, '../../uploads', product.image.split('/uploads/')[1]);
-          fs.unlink(oldImagePath, (err) => {
-            if (err) console.error('Erreur suppression ancienne image:', err);
-          });
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+          }
         }
         req.body.image = `/uploads/${req.file.filename}`;
       }
@@ -139,7 +151,6 @@ exports.updateProduct = [
         data: product
       });
     } catch (error) {
-      // Supprimer le nouveau fichier uploadé en cas d'erreur
       if (req.file) {
         fs.unlink(path.join(__dirname, '../../uploads', req.file.filename), (err) => {
           if (err) console.error('Erreur suppression fichier:', err);
@@ -159,7 +170,14 @@ exports.updateProduct = [
 // @access  Public
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de produit invalide' 
+      });
+    }
+
+    const product = await Product.findOneAndDelete({ _id: req.params.id });
     
     if (!product) {
       return res.status(404).json({
@@ -168,22 +186,26 @@ exports.deleteProduct = async (req, res) => {
       });
     }
 
-    // Supprimer l'image associée
     if (product.image) {
-      const imagePath = path.join(__dirname, '../../uploads', product.image.split('/uploads/')[1]);
-      fs.unlink(imagePath, (err) => {
-        if (err) console.error('Erreur suppression image:', err);
-      });
+      const filename = product.image.split('/uploads/')[1];
+      if (filename) {
+        const imagePath = path.join(__dirname, '../../uploads', filename);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      }
     }
 
     res.status(200).json({
       success: true,
-      message: 'Produit supprimé avec succès'
+      message: 'Produit supprimé avec succès',
+      deletedProduct: product
     });
   } catch (error) {
+    console.error('Erreur serveur:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur serveur',
+      message: 'Erreur lors de la suppression',
       error: error.message
     });
   }

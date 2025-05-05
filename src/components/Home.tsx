@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Card, Carousel, Typography, Button, Space } from 'antd';
+import { Row, Col, Card, Carousel, Typography, Button, Space,  Rate, Empty, Spin } from 'antd';
 import { ShoppingCartOutlined, FireOutlined, StarOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Product, getProducts } from '../services/productService';
 import { useCart } from '../context/CartContext';
 import '../styles/Home.css';
@@ -9,32 +9,137 @@ import '../styles/Home.css';
 const { Title, Text, Paragraph } = Typography;
 const { Meta } = Card;
 
+// Utilitaire pour les URLs d'images avec URL directe
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return '/images/placeholder-product.jpg';
+  if (imagePath.startsWith('http')) return imagePath;
+  
+  // Utiliser l'URL complète du serveur backend
+  return `http://localhost:5000${imagePath}`;
+};
+
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const data = await getProducts();
         setProducts(data);
+        setLoading(false);
       } catch (error) {
         console.error("Erreur lors de la récupération des produits :", error);
+        setError("Une erreur est survenue lors du chargement des produits");
+        setLoading(false);
       }
     };
     fetchProducts();
   }, []);
 
   const featuredProducts = Array.isArray(products) ? products.slice(0, 4) : [];
-const newArrivals = Array.isArray(products) ? products.slice(4, 8) : [];
+  const newArrivals = Array.isArray(products) ? products.slice(4, 8) : [];
 
   const heroImages = [
     '/images/banner1.jpg',
     '/images/banner2.jpg',
     '/images/banner3.jpg',
   ];
+
+  // Affiche un message de chargement ou d'erreur si nécessaire
+  const renderProductsSection = (productsToRender, title, icon, linkText, linkPath) => {
+    if (loading) {
+      return (
+        <div className="products-loading-container">
+          <Spin size="large" />
+          <p>Chargement des produits...</p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="products-error-container">
+          <p>Erreur: {error}</p>
+        </div>
+      );
+    }
+
+    if (productsToRender.length === 0) {
+      return <Empty description="Aucun produit trouvé" />;
+    }
+
+    return (
+      <section className="products-section">
+        <div className="section-header">
+          <Title level={3} className="section-subtitle">
+            {icon === 'fire' && <FireOutlined className="section-icon" />}
+            {icon === 'star' && <StarOutlined className="section-icon" />}
+            {title}
+          </Title>
+          <Button type="link" onClick={() => navigate(linkPath)}>
+            {linkText}
+          </Button>
+        </div>
+        <Row gutter={[16, 24]}>
+          {productsToRender.map((product) => (
+            <Col key={product._id} xs={24} sm={12} md={8} lg={6}>
+              <Link to={`/products/${product._id}`}>
+                <Card
+                  hoverable
+                  className="product-card"
+                  cover={
+                    <div className="product-image-container">
+                      <img 
+                        alt={product.name} 
+                        src={getImageUrl(product.image)} 
+                        className="product-image"
+                      />
+                      {product.isNew && <div className="product-badge new">Nouveau</div>}
+                      {product.isPromo && <div className="product-badge promo">Promo</div>}
+                    </div>
+                  }
+                  actions={[
+                    <div className="card-action" onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      addToCart(product);
+                    }}>
+                      <ShoppingCartOutlined /> Ajouter au panier
+                    </div>
+                  ]}
+                >
+                  <Meta
+                    title={product.name}
+                    description={
+                      <div className="product-meta">
+                        <div className="product-price">
+                          {product.oldPrice && (
+                            <span className="old-price">{product.oldPrice.toFixed(2)} FCFA</span>
+                          )}
+                          <span className="current-price">{product.price.toFixed(2)} FCFA</span>
+                        </div>
+                        <div className="product-rating">
+                          <Rate disabled defaultValue={product.rating || 5} allowHalf />
+                          <span className="stock-info">
+                            {product.stock > 0 ? `En stock (${product.stock})` : 'Rupture de stock'}
+                          </span>
+                        </div>
+                      </div>
+                    }
+                  />
+                </Card>
+              </Link>
+            </Col>
+          ))}
+        </Row>
+      </section>
+    );
+  };
 
   return (
     <div className="home-container">
@@ -91,124 +196,22 @@ const newArrivals = Array.isArray(products) ? products.slice(4, 8) : [];
       </section>
 
       {/* Featured Products */}
-      <section className="products-section">
-        <div className="section-header">
-          <Title level={3} className="section-subtitle">
-            <FireOutlined className="section-icon" />
-            Produits Tendances
-          </Title>
-          <Button type="link" onClick={() => navigate('/products')}>
-            Voir tout
-          </Button>
-        </div>
-        <Row gutter={[16, 24]}>
-          {featuredProducts.slice(0, 4).map((product) => (
-            <Col key={product._id} xs={24} sm={12} md={8} lg={6}>
-              <Card
-                hoverable
-                cover={
-                  <img 
-                    alt={product.name} 
-                    src={product.image || '/images/placeholder-product.jpg'} 
-                    className="product-image"
-                  />
-                }
-                className="product-card"
-                actions={[
-                  <Button 
-                    type="primary" 
-                    icon={<ShoppingCartOutlined />} 
-                    onClick={() => addToCart(product)}
-                    className="product-action-button"
-                  >
-                    Ajouter
-                  </Button>,
-                  <Button 
-                    onClick={() => navigate(`/products/${product._id}`)}
-                    className="product-action-button"
-                  >
-                    Voir détails
-                  </Button>
-                ]}
-              >
-                <Meta
-                  title={<div className="product-title">{product.name}</div>}
-                  description={
-                    <>
-                      <Text strong className="product-price">
-                        {product.price.toLocaleString()} FCFA
-                      </Text>
-                      <Paragraph ellipsis={{ rows: 2 }} className="product-description">
-                        {product.description}
-                      </Paragraph>
-                    </>
-                  }
-                />
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      </section>
+      {renderProductsSection(
+        featuredProducts, 
+        'Produits Tendances', 
+        'fire', 
+        'Voir tout', 
+        '/products'
+      )}
 
       {/* New Arrivals */}
-      <section className="products-section">
-        <div className="section-header">
-          <Title level={3} className="section-subtitle">
-            <StarOutlined className="section-icon" />
-            Nouveaux Produits
-          </Title>
-          <Button type="link" onClick={() => navigate('/products?sort=newest')}>
-            Voir tout
-          </Button>
-        </div>
-        <Row gutter={[16, 24]}>
-          {newArrivals.slice(0, 4).map((product) => (
-            <Col key={product._id} xs={24} sm={12} md={8} lg={6}>
-              <Card
-                hoverable
-                cover={
-                  <img 
-                    alt={product.name} 
-                    src={product.image || '/images/placeholder-product.jpg'} 
-                    className="product-image"
-                  />
-                }
-                className="product-card"
-                actions={[
-                  <Button 
-                    type="primary" 
-                    icon={<ShoppingCartOutlined />} 
-                    onClick={() => addToCart(product)}
-                    className="product-action-button"
-                  >
-                    Ajouter
-                  </Button>,
-                  <Button 
-                    onClick={() => navigate(`/products/${product._id}`)}
-                    className="product-action-button"
-                  >
-                    Voir détails
-                  </Button>
-                ]}
-              >
-                <Meta
-                  title={<div className="product-title">{product.name}</div>}
-                  description={
-                    <>
-                      <Text strong className="product-price">
-                        {product.price.toLocaleString()} FCFA
-                      </Text>
-                      <Paragraph ellipsis={{ rows: 2 }} className="product-description">
-                        {product.description}
-                      </Paragraph>
-                    </>
-                  }
-                />
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      </section>
+      {renderProductsSection(
+        newArrivals, 
+        'Nouveaux Produits', 
+        'star', 
+        'Voir tout', 
+        '/products?sort=newest'
+      )}
 
       {/* Value Proposition */}
       <section className="value-proposition">

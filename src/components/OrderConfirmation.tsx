@@ -70,7 +70,7 @@ const OrderConfirmation = () => {
         
         <Descriptions bordered column={1}>
           <Descriptions.Item label="Référence">{orderId}</Descriptions.Item>
-          <Descriptions.Item label="Montant total">€{amount.toFixed(2)}</Descriptions.Item>
+          <Descriptions.Item label="Montant total">FCFA{amount.toFixed(2)}</Descriptions.Item>
           <Descriptions.Item label="Méthode de paiement">{paymentMethod}</Descriptions.Item>
           <Descriptions.Item label="Statut">Confirmée</Descriptions.Item>
         </Descriptions>

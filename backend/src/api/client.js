@@ -1,32 +1,51 @@
-// src/api/client.js
 import axios from 'axios';
 
 const client = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
   withCredentials: true,
-  timeout: 10000, // 10 secondes timeout
+  timeout: 10000,
 });
 
-// Intercepteur pour les requêtes
+// Configuration des headers par défaut
 client.interceptors.request.use(config => {
-  console.log('Envoi de la requête à', config.url);
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  if (config.method === 'delete') {
+    config.headers['Content-Type'] = 'application/json';
+  }
+  
   return config;
 }, error => {
   return Promise.reject(error);
 });
 
-// Intercepteur pour les réponses
-client.interceptors.response.use(response => {
-  return response;
-}, error => {
-  if (error.response) {
-    console.error('Erreur API:', error.response.status, error.response.data);
-  } else if (error.request) {
-    console.error('Pas de réponse du serveur');
-  } else {
-    console.error('Erreur de configuration', error.message);
+// Gestion des erreurs
+client.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response) {
+      console.error('Erreur API:', {
+        status: error.response.status,
+        data: error.response.data,
+        url: error.config.url
+      });
+      
+      if (error.response.status === 401) {
+        // Gérer la déconnexion si token invalide
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
+    } else if (error.request) {
+      console.error('Pas de réponse du serveur:', error.request);
+    } else {
+      console.error('Erreur de configuration:', error.message);
+    }
+    
+    return Promise.reject(error);
   }
-  return Promise.reject(error);
-});
+);
 
 export default client;

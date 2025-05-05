@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Card, 
   Form, 
@@ -34,6 +34,12 @@ const CheckoutForm = ({ totalAmount, onBack }) => {
   const { clearCart } = useCart();
   const navigate = useNavigate();
 
+  const savePaymentToHistory = (paymentData) => {
+    const existingHistory = JSON.parse(localStorage.getItem('paymentSimulations')) || [];
+    const updatedHistory = [paymentData, ...existingHistory];
+    localStorage.setItem('paymentSimulations', JSON.stringify(updatedHistory));
+  };
+
   const handleSubmit = async (values) => {
     setLoading(true);
     setError(null);
@@ -42,18 +48,25 @@ const CheckoutForm = ({ totalAmount, onBack }) => {
       // Simulation de délai de traitement
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Simulation de succès de paiement
-      const isSuccess = Math.random() > 0.2; // 80% de chance de succès
+      // Simulation de succès de paiement (80% de chance de succès)
+      const isSuccess = Math.random() > 0.2;
 
       if (isSuccess) {
+        const paymentData = {
+          orderId: `SIM-${Date.now()}`,
+          amount: totalAmount,
+          paymentMethod: 'Carte de crédit (simulation)',
+          date: new Date().toISOString()
+        };
+
+        // Sauvegarder dans l'historique
+        savePaymentToHistory(paymentData);
+        
         message.success('Paiement simulé réussi !');
         clearCart();
+        
         navigate('/order-confirmation', { 
-          state: { 
-            orderId: `SIM-${Date.now()}`,
-            amount: totalAmount,
-            paymentMethod: 'Carte de crédit (simulation)'
-          } 
+          state: paymentData
         });
       } else {
         throw new Error('Échec de paiement simulé (problème de fonds ou connexion)');
@@ -193,7 +206,7 @@ const CheckoutForm = ({ totalAmount, onBack }) => {
           icon={<CreditCardOutlined />}
           size="large"
         >
-          Simuler le paiement (€{totalAmount.toFixed(2)})
+          Simuler le paiement (FCFA {totalAmount.toFixed(2)})
         </Button>
       </Space>
     </Form>

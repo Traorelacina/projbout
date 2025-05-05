@@ -1,379 +1,390 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  Button, 
-  Rate, 
-  Spin, 
-  message, 
-  Divider, 
-  Tag, 
   Row, 
   Col, 
-  Image,
+  Spin, 
+  Image, 
+  Typography, 
+  Rate, 
+  Button, 
+  Tag, 
+  Divider, 
+  InputNumber, 
+  Descriptions, 
   Tabs,
-  Badge
+  Breadcrumb,
+  message
 } from 'antd';
 import { 
   ShoppingCartOutlined, 
   HeartOutlined, 
-  HeartFilled, 
-  ArrowLeftOutlined 
+  ShareAltOutlined, 
+  HomeOutlined,
+  CheckCircleOutlined, 
+  CloseCircleOutlined
 } from '@ant-design/icons';
-import { useCart } from '../context/CartContext';
 import client from '../api/client';
+import { useCart } from '../context/CartContext';
 import '../styles/ProductDetailPage.css';
 
+const { Title, Paragraph, Text } = Typography;
 const { TabPane } = Tabs;
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  oldPrice?: number;
-  category: string;
-  image: string;
-  images?: string[];
-  rating: number;
-  stock: number;
-  isNew?: boolean;
-  isPromo?: boolean;
-  specifications?: Record<string, string>;
-  reviews?: Array<{
-    user: string;
-    rating: number;
-    comment: string;
-    date: string;
-  }>;
-}
+// Utilitaire pour les URLs d'images
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return '/placeholder.png';
+  if (imagePath.startsWith('http')) return imagePath;
+  
+  // Utiliser l'URL complète du serveur backend
+  return `http://localhost:5000${imagePath}`;
+};
 
 const ProductDetailPage = () => {
-  const { id } = useParams<{ id: string }>();
+  // Récupérer l'ID du produit depuis l'URL
+  const params = useParams();
+  const productId = params.productId || params.id; // Essayer les deux formats possibles
+  
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const [product, setProduct] = useState<Product | null>(null);
+  
+  const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [favorite, setFavorite] = useState(false);
+  const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState('description');
+  const [relatedProducts, setRelatedProducts] = useState([]);
+
+  // Débogage pour voir si le paramètre est correctement récupéré
+  console.log("Params de l'URL:", params);
+  console.log("ID du produit détecté:", productId);
 
   useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await client.get(`/products/${id}`);
-        setProduct(response.data);
-        
-        // Check if product is in favorites (could be from localStorage)
-        const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-        setFavorite(favorites.includes(response.data.id));
-        
-      } catch (err: any) {
-        let errorMessage = 'Failed to fetch product details';
-        if (err.response) {
-          errorMessage = err.response.data.message || errorMessage;
-        } else if (err.request) {
-          errorMessage = 'No response from server. Check your connection.';
-        } else {
-          errorMessage = err.message || errorMessage;
-        }
-        setError(errorMessage);
-        message.error(errorMessage);
-      } finally {
+    // Vérifier si productId est défini avant de faire l'appel API
+    if (productId) {
+      fetchProductDetails();
+    } else {
+      // Tenter de récupérer l'ID directement depuis le chemin de l'URL
+      const pathParts = window.location.pathname.split('/');
+      const possibleId = pathParts[pathParts.length - 1];
+      
+      console.log("Tentative de récupération d'ID depuis l'URL:", possibleId);
+      
+      if (possibleId && possibleId !== 'products') {
+        // Utiliser cet ID si disponible
+        fetchProductDetailsWithId(possibleId);
+      } else {
+        setError("Identifiant de produit manquant");
         setLoading(false);
       }
-    };
+    }
+  }, [productId]);
 
-    fetchProduct();
-  }, [id]);
+  const fetchProductDetailsWithId = async (id) => {
+    if (!id) return;
+    
+    try {
+      setLoading(true);
+      console.log(`Chargement du produit avec ID: ${id}`);
+      
+      const response = await client.get(`/products/${id}`);
+      
+      if (response.data && response.data.success) {
+        setProduct(response.data.data);
+        // Après avoir chargé le produit, chercher les produits connexes
+        if (response.data.data && response.data.data.category) {
+          fetchRelatedProducts(response.data.data.category);
+        }
+      } else {
+        throw new Error(response.data?.message || 'Erreur lors du chargement du produit');
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement du produit:', err);
+      setError(err.message || 'Une erreur est survenue lors du chargement du produit');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const fetchProductDetails = () => {
+    fetchProductDetailsWithId(productId);
+  };
+
+  const fetchRelatedProducts = async (category) => {
+    if (!category) return;
+    
+    try {
+      const response = await client.get(`/products?category=${encodeURIComponent(category)}&limit=4`);
+      if (response.data && response.data.success) {
+        // Filtrer pour exclure le produit actuel
+        const filtered = response.data.data.filter(p => p._id !== productId);
+        setRelatedProducts(filtered.slice(0, 4)); // Limiter à 4 produits
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement des produits connexes:', err);
+      // Ne pas définir d'erreur globale pour cette requête secondaire
+    }
+  };
 
   const handleAddToCart = () => {
-    if (!product) return;
-    
-    addToCart({ ...product, quantity });
-    message.success(`${product.name} added to cart!`);
-  };
-
-  const toggleFavorite = () => {
-    if (!product) return;
-    
-    const newFavoriteStatus = !favorite;
-    setFavorite(newFavoriteStatus);
-    
-    let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-    
-    if (newFavoriteStatus) {
-      favorites = [...favorites, product.id];
-      message.success('Added to favorites!');
-    } else {
-      favorites = favorites.filter((favId: string) => favId !== product.id);
-      message.info('Removed from favorites');
+    if (product) {
+      // Adapter l'objet produit pour correspondre à l'interface Product du CartContext
+      const cartProduct = {
+        id: product._id,
+        name: product.name,
+        price: product.price,
+        image: product.image
+      };
+      
+      addToCart(cartProduct, quantity);
+      message.success(`${quantity} ${product.name} ajouté(s) au panier`);
     }
-    
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-  };
-
-  const calculateDiscount = () => {
-    if (!product?.oldPrice) return 0;
-    return Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100);
   };
 
   if (loading) {
     return (
       <div className="product-detail-loading">
-        <Spin size="large" tip="Loading product details..." />
+        <Spin size="large" />
+        <p>Chargement du produit...</p>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !product) {
     return (
       <div className="product-detail-error">
-        <p className="error-message">{error}</p>
-        <Button 
-          type="primary" 
-          onClick={() => navigate(-1)}
-          icon={<ArrowLeftOutlined />}
-        >
-          Back to Products
+        <h2>Erreur</h2>
+        <p>{error || "Ce produit n'existe pas ou a été supprimé."}</p>
+        <Button type="primary" onClick={() => navigate('/products')}>
+          Retour aux produits
         </Button>
       </div>
     );
   }
-
-  if (!product) {
-    return (
-      <div className="product-not-found">
-        <h2>Product not found</h2>
-        <Button 
-          type="primary" 
-          onClick={() => navigate('/products')}
-        >
-          Browse Products
-        </Button>
-      </div>
-    );
-  }
-
-  const discountPercentage = calculateDiscount();
 
   return (
     <div className="product-detail-page">
-      <Button 
-        type="text" 
-        icon={<ArrowLeftOutlined />} 
-        onClick={() => navigate(-1)}
-        className="back-button"
-      >
-        Back
-      </Button>
-      
-      <Row gutter={[32, 32]} className="product-detail-container">
-        <Col xs={24} md={12} lg={10}>
-          <div className="product-image-gallery">
-            <div className="main-image-container">
-              <Image
-                src={product.image}
-                alt={product.name}
-                className="main-image"
-                preview={false}
-                fallback="/placeholder-product-image.jpg"
-              />
-              
-              <div className="product-badges">
-                {product.isNew && (
-                  <Tag color="green" className="product-badge">
-                    NEW
-                  </Tag>
-                )}
-                {product.isPromo && product.oldPrice && (
-                  <Tag color="red" className="product-badge">
-                    -{discountPercentage}%
-                  </Tag>
-                )}
-                {product.stock <= 0 && (
-                  <Tag color="orange" className="product-badge">
-                    Out of Stock
-                  </Tag>
-                )}
-              </div>
+      {/* Fil d'Ariane */}
+      <Breadcrumb className="product-breadcrumb">
+        <Breadcrumb.Item>
+          <a href="/"><HomeOutlined /> Accueil</a>
+        </Breadcrumb.Item>
+        <Breadcrumb.Item>
+          <a href="/products">Produits</a>
+        </Breadcrumb.Item>
+        {product.category && (
+          <Breadcrumb.Item>
+            <a href={`/products?category=${encodeURIComponent(product.category)}`}>
+              {product.category}
+            </a>
+          </Breadcrumb.Item>
+        )}
+        <Breadcrumb.Item>{product.name}</Breadcrumb.Item>
+      </Breadcrumb>
+
+      <Row gutter={[32, 24]} className="product-main-content">
+        {/* Colonne gauche - Images */}
+        <Col xs={24} md={12} className="product-images-column">
+          <div className="product-main-image">
+            <div className="product-badges">
+              {product.isNew && <span className="badge new">Nouveau</span>}
+              {product.isPromo && <span className="badge promo">Promo</span>}
             </div>
-            
-            {product.images && product.images.length > 0 && (
-              <div className="thumbnail-container">
-                {product.images.map((img, index) => (
-                  <div key={index} className="thumbnail-item">
-                    <Image
-                      src={img}
-                      alt={`${product.name} thumbnail ${index + 1}`}
-                      preview={false}
-                      width={60}
-                      height={60}
-                      fallback="/placeholder-product-image.jpg"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            <Image
+              src={getImageUrl(product.image)}
+              alt={product.name}
+              className="main-product-image"
+              fallback="/placeholder.png"
+              preview={{
+                mask: <div className="zoom-hint">Cliquez pour zoomer</div>
+              }}
+            />
           </div>
+          
+          {/* Images miniatures si le produit en a plusieurs */}
+          {product.additionalImages && product.additionalImages.length > 0 && (
+            <div className="product-thumbnails">
+              {product.additionalImages.map((img, index) => (
+                <Image 
+                  key={index}
+                  src={getImageUrl(img)}
+                  alt={`${product.name} - vue ${index + 2}`}
+                  className="thumbnail-image"
+                  fallback="/placeholder.png"
+                  preview={false}
+                />
+              ))}
+            </div>
+          )}
         </Col>
-        
-        <Col xs={24} md={12} lg={14}>
-          <div className="product-info">
-            <h1 className="product-title">{product.name}</h1>
+
+        {/* Colonne droite - Informations du produit */}
+        <Col xs={24} md={12} className="product-info-column">
+          <div className="product-header">
+            <Title level={2}>{product.name}</Title>
             
             <div className="product-meta">
-              <div className="product-category">
-                <Tag color="blue">{product.category}</Tag>
-              </div>
-              
-              <div className="product-rating">
-                <Rate 
-                  disabled 
-                  allowHalf 
-                  defaultValue={product.rating} 
-                  className="rating-stars" 
-                />
-                <span className="rating-text">
-                  ({product.rating.toFixed(1)})
-                </span>
-              </div>
+              <Rate disabled defaultValue={product.rating || 0} allowHalf />
+              <Text className="review-count">({product.reviewCount || 0} avis)</Text>
+              <Text className="product-reference">Réf: {(product._id && product._id.slice(-8)) || 'N/A'}</Text>
             </div>
             
             <div className="product-price-section">
               {product.oldPrice && (
-                <div className="old-price">
-                  ${product.oldPrice.toFixed(2)}
-                </div>
+                <Text delete className="old-price">{product.oldPrice.toFixed(2)} FCFA</Text>
               )}
-              <div className="current-price">
-                ${product.price.toFixed(2)}
-              </div>
+              <Title level={3} className="current-price">{product.price.toFixed(2)} FCFA</Title>
               {product.oldPrice && (
-                <div className="discount-badge">
-                  Save {discountPercentage}%
-                </div>
+                <Tag color="red" className="discount-tag">
+                  -{Math.round((1 - product.price / product.oldPrice) * 100)}%
+                </Tag>
               )}
             </div>
-            
-            <div className="product-stock">
-              {product.stock > 0 ? (
-                <Badge status="success" text={`In Stock (${product.stock} available)`} />
-              ) : (
-                <Badge status="error" text="Out of Stock" />
-              )}
-            </div>
-            
-            <Divider />
-            
-            <div className="product-actions">
+          </div>
+
+          <Divider />
+          
+          <Paragraph className="product-short-description">
+            {product.description}
+          </Paragraph>
+          
+          <div className="product-availability">
+            <Text strong>Disponibilité: </Text>
+            {product.stock > 0 ? (
+              <Text type="success">
+                <CheckCircleOutlined /> En stock ({product.stock} disponibles)
+              </Text>
+            ) : (
+              <Text type="danger">
+                <CloseCircleOutlined /> Rupture de stock
+              </Text>
+            )}
+          </div>
+          
+          {product.stock > 0 && (
+            <div className="add-to-cart-section">
               <div className="quantity-selector">
-                <Button 
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={quantity <= 1}
-                >
-                  -
-                </Button>
-                <span className="quantity-value">{quantity}</span>
-                <Button 
-                  onClick={() => setQuantity(quantity + 1)}
-                  disabled={product.stock <= 0 || quantity >= product.stock}
-                >
-                  +
-                </Button>
+                <Text>Quantité:</Text>
+                <InputNumber 
+                  min={1} 
+                  max={product.stock} 
+                  value={quantity}
+                  onChange={(value) => setQuantity(value || 1)}
+                  className="quantity-input"
+                />
               </div>
               
-              <Button
-                type="primary"
-                icon={<ShoppingCartOutlined />}
-                onClick={handleAddToCart}
-                disabled={product.stock <= 0}
-                className="add-to-cart-button"
+              <Button 
+                type="primary" 
+                icon={<ShoppingCartOutlined />} 
                 size="large"
+                className="add-to-cart-button"
+                onClick={handleAddToCart}
               >
-                Add to Cart
+                Ajouter au panier
               </Button>
               
-              <Button
-                type={favorite ? "primary" : "default"}
-                danger={favorite}
-                icon={favorite ? <HeartFilled /> : <HeartOutlined />}
-                onClick={toggleFavorite}
-                className="favorite-button"
-                size="large"
+              <Button 
+                icon={<HeartOutlined />}
+                className="wishlist-button"
               >
-                {favorite ? 'Favorited' : 'Favorite'}
+                Favoris
               </Button>
             </div>
+          )}
+
+          <Divider />
+          
+          {/* Informations supplémentaires */}
+          <div className="product-details">
+            <Descriptions column={1} size="small" className="product-specs">
+              {product.category && (
+                <Descriptions.Item label="Catégorie">{product.category}</Descriptions.Item>
+              )}
+              {product.brand && (
+                <Descriptions.Item label="Marque">{product.brand}</Descriptions.Item>
+              )}
+              {product.weight && (
+                <Descriptions.Item label="Poids">{product.weight} kg</Descriptions.Item>
+              )}
+              {product.dimensions && (
+                <Descriptions.Item label="Dimensions">{product.dimensions}</Descriptions.Item>
+              )}
+            </Descriptions>
+          </div>
+          
+          <div className="product-share">
+            <Button icon={<ShareAltOutlined />} type="text">
+              Partager
+            </Button>
           </div>
         </Col>
       </Row>
-      
-      <Divider />
-      
-      <div className="product-details-tabs">
-        <Tabs 
-          activeKey={activeTab} 
-          onChange={setActiveTab}
-          centered
-        >
-          <TabPane tab="Description" key="description">
-            <div className="product-description">
-              <p>{product.description}</p>
+
+      {/* Onglets avec descriptions détaillées, spécifications, avis, etc. */}
+      <div className="product-tabs-section">
+        <Tabs defaultActiveKey="description" className="product-tabs">
+          <TabPane tab="Description détaillée" key="description">
+            <div className="tab-content">
+              {product.longDescription ? (
+                <div dangerouslySetInnerHTML={{ __html: product.longDescription }} />
+              ) : (
+                <Paragraph>{product.description}</Paragraph>
+              )}
             </div>
           </TabPane>
           
-          <TabPane tab="Specifications" key="specifications">
-            <div className="product-specifications">
-              {product.specifications ? (
-                <Row gutter={[16, 16]}>
+          <TabPane tab="Spécifications" key="specifications">
+            <div className="tab-content">
+              {product.specifications && Object.keys(product.specifications).length > 0 ? (
+                <Descriptions bordered column={1} className="specifications-table">
                   {Object.entries(product.specifications).map(([key, value]) => (
-                    <React.Fragment key={key}>
-                      <Col span={8} className="spec-label">
-                        <strong>{key}</strong>
-                      </Col>
-                      <Col span={16} className="spec-value">
-                        {value}
-                      </Col>
-                    </React.Fragment>
+                    <Descriptions.Item key={key} label={key}>{value}</Descriptions.Item>
                   ))}
-                </Row>
+                </Descriptions>
               ) : (
-                <p>No specifications available for this product.</p>
+                <Paragraph>Aucune spécification disponible pour ce produit.</Paragraph>
               )}
             </div>
           </TabPane>
           
-          <TabPane tab={`Reviews (${product.reviews?.length || 0})`} key="reviews">
-            <div className="product-reviews">
-              {product.reviews && product.reviews.length > 0 ? (
-                product.reviews.map((review, index) => (
-                  <div key={index} className="review-item">
-                    <div className="review-header">
-                      <span className="review-user">{review.user}</span>
-                      <Rate 
-                        disabled 
-                        defaultValue={review.rating} 
-                        className="review-rating" 
-                      />
-                      <span className="review-date">{review.date}</span>
-                    </div>
-                    <div className="review-comment">
-                      <p>{review.comment}</p>
-                    </div>
-                    {index < product.reviews!.length - 1 && <Divider />}
-                  </div>
-                ))
-              ) : (
-                <p>No reviews yet for this product.</p>
-              )}
+          <TabPane tab={`Avis (${product.reviewCount || 0})`} key="reviews">
+            <div className="tab-content">
+              {/* Contenu des avis - à implémenter */}
+              <Paragraph>Les avis clients seront bientôt disponibles.</Paragraph>
             </div>
           </TabPane>
         </Tabs>
       </div>
+
+      {/* Produits connexes */}
+      {relatedProducts.length > 0 && (
+        <div className="related-products-section">
+          <Title level={3}>Produits similaires</Title>
+          <Row gutter={[16, 16]}>
+            {relatedProducts.map(relatedProduct => (
+              <Col xs={24} sm={12} md={6} key={relatedProduct._id}>
+                <div 
+                  className="related-product-card"
+                  onClick={() => {
+                    // Forcer un rechargement complet de la page pour assurer la récupération des données
+                    window.location.href = `/products/${relatedProduct._id}`;
+                  }}
+                >
+                  <img 
+                    src={getImageUrl(relatedProduct.image)} 
+                    alt={relatedProduct.name} 
+                    className="related-product-image"
+                  />
+                  <div className="related-product-info">
+                    <Text strong className="related-product-name">{relatedProduct.name}</Text>
+                    <Text className="related-product-price">{relatedProduct.price.toFixed(2)} FCFA</Text>
+                  </div>
+                </div>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      )}
     </div>
   );
 };

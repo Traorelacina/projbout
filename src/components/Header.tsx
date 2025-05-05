@@ -46,8 +46,6 @@ const HeaderComponent = () => {
   const navItems = [
     { id: 'home', name: 'Accueil', path: '/' },
     { id: 'products', name: 'Produits', path: '/products' },
-    { id: 'new', name: 'Nouveautés', path: '/new' },
-    { id: 'sales', name: 'Promotions', path: '/sales' },
     { id: 'about', name: 'Propos', path: '/about' },
     { id: 'historique', name: 'Historique', path: '/OrderHistory' },
   ];
